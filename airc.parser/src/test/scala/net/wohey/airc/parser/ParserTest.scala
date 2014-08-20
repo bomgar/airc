@@ -76,4 +76,19 @@ class ParserTest extends FunSuite with Matchers {
     parseResult should be ('isFailure)
   }
 
+  test("recognize illegal CR") {
+    val parseResult = IrcMessageParser.parse("TEST bla blubb :asdlkasd kalsd asdk asldk asd\r as")
+    parseResult should be ('isFailure)
+  }
+
+  test("recognize illegal LF in trailing") {
+    val parseResult = IrcMessageParser.parse("TEST bla blubb :asdlkasd kalsd asdk asldk asd\n as")
+    parseResult should be ('isFailure)
+  }
+
+  test("recognize illegal LF in args") {
+    val parseResult = IrcMessageParser.parse("TEST bla\n blubb :asdlkasd kalsd asdk asldk asd as")
+    parseResult should be ('isFailure)
+  }
+
 }

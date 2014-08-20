@@ -9,6 +9,8 @@ import scala.util.parsing.combinator._
 
 object IrcMessageParser extends RegexParsers {
 
+  override protected val whiteSpace = """[ ]""".r
+
   val nick: Parser[String] = """[a-zA-Z0-9-\[\]\\`\^\{\}]+""".r
 
   val user: Parser[String] = """[^\s@]+""".r
@@ -17,7 +19,7 @@ object IrcMessageParser extends RegexParsers {
 
   val arg: Parser[String] = """[^:\s][\S]+""".r
 
-  val trailing: Parser[String] = ":" ~ ".*".r ^^ { case _ ~ s => s}
+  val trailing: Parser[String] = ":" ~ """[^\r\n]*""".r ^^ { case _ ~ s => s}
 
   val prefix: Parser[MessagePrefix] = ":" ~ nick ~ "!" ~ user ~ """@""" ~ host ^^ {
     case _ ~ n ~ _ ~ u ~ _ ~ h => new MessagePrefix(nick = n, user = u, host = h)
