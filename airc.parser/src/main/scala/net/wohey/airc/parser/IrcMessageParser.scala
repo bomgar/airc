@@ -1,7 +1,5 @@
 package net.wohey.airc.parser
 
-import java.text.ParseException
-
 import net.wohey.airc.{MessagePrefix, IrcMessage}
 
 import scala.util.Try
