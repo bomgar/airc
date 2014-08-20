@@ -7,7 +7,7 @@ import scala.util.parsing.combinator._
 
 object IrcMessageParser extends RegexParsers {
 
-  override protected val whiteSpace = """[ ]""".r
+  override protected val whiteSpace = """[ ]+""".r
 
   val nick: Parser[String] = """[a-zA-Z0-9-\[\]\\`\^\{\}]+""".r
 
