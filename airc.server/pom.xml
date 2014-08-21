@@ -57,6 +57,11 @@
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-slf4j_2.11</artifactId>
         </dependency>
+        <dependency>
+            <groupId>net.wohey</groupId>
+            <artifactId>airc.core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
 </project>
