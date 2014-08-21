@@ -63,9 +63,9 @@ class IrcServer(system: ActorSystem, val serverAddress: InetSocketAddress) exten
       .map(IrcMessageParser.parse)
       .filter(_.isSuccess)
       .map {
-      case Success(m) => m
-      case Failure(_) => throw new IllegalStateException("All failures should have been filtered already.")
-    }
+        case Success(m) => m
+        case Failure(_) => throw new IllegalStateException("All failures should have been filtered already.")
+      }
       .foreach(println(_))
       .consume(materializer)
   }
