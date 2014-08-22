@@ -9,13 +9,13 @@ class DelimiterFraming(maxSize: Int, delimiter: ByteString, includeDelimiter: Bo
   require(maxSize > 0, "maxSize must be positive")
   require(delimiter.nonEmpty, "delimiter must not be empty")
 
-  val singleByteDelimiter: Boolean = delimiter.size == 1
+  private val singleByteDelimiter: Boolean = delimiter.size == 1
 
-  var buffer: ByteString = ByteString.empty
+  private var buffer: ByteString = ByteString.empty
 
-  var delimiterFragment: Option[ByteString] = None
+  private var delimiterFragment: Option[ByteString] = None
 
-  val firstByteOfDelimiter = delimiter.head
+  private val firstByteOfDelimiter = delimiter.head
 
   def apply(fragment: ByteString) : List[ByteString] = {
 

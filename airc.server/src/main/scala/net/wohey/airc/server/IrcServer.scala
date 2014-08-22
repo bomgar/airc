@@ -17,21 +17,21 @@ import scala.util.{Failure, Success}
 
 class IrcServer(shutdownSystemOnError : Boolean = false) extends Actor with ActorLogging {
 
-  implicit val system = context.system
+  private implicit val system = context.system
 
-  val bindAddress = context.system.settings.config.getString("ircserver.socket.bind_adress")
+  private val bindAddress = context.system.settings.config.getString("ircserver.socket.bind_adress")
 
-  val port = context.system.settings.config.getInt("ircserver.socket.port")
+  private val port = context.system.settings.config.getInt("ircserver.socket.port")
 
-  val serverAddress = new InetSocketAddress(bindAddress, port)
+  private val serverAddress = new InetSocketAddress(bindAddress, port)
 
-  val settings = MaterializerSettings()
+  private val settings = MaterializerSettings()
 
-  val materializer = FlowMaterializer(settings)
+  private val materializer = FlowMaterializer(settings)
 
-  implicit val timeout = Timeout(5.seconds)
+  private implicit val timeout = Timeout(5.seconds)
 
-  val delimiter = ByteString("\r\n".getBytes("UTF-8"))
+  private val delimiter = ByteString("\r\n".getBytes("UTF-8"))
 
   override def preStart() = {
     IO(StreamTcp) ! StreamTcp.Bind(settings, serverAddress)
@@ -46,7 +46,7 @@ class IrcServer(shutdownSystemOnError : Boolean = false) extends Actor with Acto
       if(shutdownSystemOnError) system.shutdown()
   }
 
-  def createConnectionFlow(serverBinding: StreamTcp.TcpServerBinding) {
+  private def createConnectionFlow(serverBinding: StreamTcp.TcpServerBinding) {
     Flow(serverBinding.connectionStream)
       .foreach { connection ⇒
         log.info(s"Client connected from: ${connection.remoteAddress}")
@@ -55,12 +55,12 @@ class IrcServer(shutdownSystemOnError : Boolean = false) extends Actor with Acto
       .consume(materializer)
   }
 
-  def handleNewConnection(connection: IncomingTcpConnection) {
+  private def handleNewConnection(connection: IncomingTcpConnection) {
     val connectionActor = context.actorOf(Props(new Connection(connection.remoteAddress)))
     createIncomingFlow(connection, connectionActor)
   }
 
-  def createIncomingFlow(connection: IncomingTcpConnection, connectionActor : ActorRef) {
+  private def createIncomingFlow(connection: IncomingTcpConnection, connectionActor : ActorRef) {
     val delimiterFraming = new DelimiterFraming(maxSize = 1000, delimiter = delimiter)
     Flow(connection.inputStream)
       .mapConcat(delimiterFraming.apply)
