@@ -2,7 +2,7 @@ package net.wohey.airc.server
 
 import java.net.InetSocketAddress
 
-import akka.actor.{Actor, ActorLogging, Status}
+import akka.actor._
 import akka.io.IO
 import akka.stream.io.StreamTcp
 import akka.stream.io.StreamTcp.IncomingTcpConnection
@@ -10,6 +10,7 @@ import akka.stream.scaladsl.Flow
 import akka.stream.{FlowMaterializer, MaterializerSettings}
 import akka.util.{ByteString, Timeout}
 import net.wohey.airc.parser.IrcMessageParser
+import net.wohey.airc.server.Connection.IncomingFlowClosed
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
@@ -33,19 +34,29 @@ class IrcServer(val serverAddress: InetSocketAddress, shutdownSystemOnError : Bo
   def receive: Receive = {
     case serverBinding: StreamTcp.TcpServerBinding =>
       log.info("Server started, listening on: " + serverBinding.localAddress)
-
-      Flow(serverBinding.connectionStream).foreach { conn ⇒
-        log.info(s"Client connected from: ${conn.remoteAddress}")
-        createIncomingFlow(conn)
-      }.consume(materializer)
+      createConnectionFlow(serverBinding)
     case Status.Failure(e)  =>
       log.error(e, s"Server could not bind to $serverAddress: ${e.getMessage}")
       if(shutdownSystemOnError) system.shutdown()
   }
 
-  def createIncomingFlow(conn: IncomingTcpConnection) {
+  def createConnectionFlow(serverBinding: StreamTcp.TcpServerBinding) {
+    Flow(serverBinding.connectionStream)
+      .foreach { connection ⇒
+        log.info(s"Client connected from: ${connection.remoteAddress}")
+        handleNewConnection(connection)
+      }
+      .consume(materializer)
+  }
+
+  def handleNewConnection(connection: IncomingTcpConnection) {
+    val connectionActor = context.actorOf(Props(new Connection(connection.remoteAddress)))
+    createIncomingFlow(connection, connectionActor)
+  }
+
+  def createIncomingFlow(connection: IncomingTcpConnection, connectionActor : ActorRef) {
     val delimiterFraming = new DelimiterFraming(maxSize = 1000, delimiter = delimiter)
-    Flow(conn.inputStream)
+    Flow(connection.inputStream)
       .mapConcat(delimiterFraming.apply)
       .map(_.utf8String)
       .map(IrcMessageParser.parse)
@@ -54,7 +65,7 @@ class IrcServer(val serverAddress: InetSocketAddress, shutdownSystemOnError : Bo
         case Success(m) => m
         case Failure(_) => throw new IllegalStateException("All failures should have been filtered already.")
       }
-      .foreach(println(_))
-      .consume(materializer)
+      .foreach(connectionActor ! _)
+      .onComplete(materializer){case _ => connectionActor ! Connection.IncomingFlowClosed}
   }
 }
