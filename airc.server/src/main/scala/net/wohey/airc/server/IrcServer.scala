@@ -15,9 +15,15 @@ import net.wohey.airc.server.Connection.IncomingFlowClosed
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-class IrcServer(val serverAddress: InetSocketAddress, shutdownSystemOnError : Boolean = false) extends Actor with ActorLogging {
+class IrcServer(shutdownSystemOnError : Boolean = false) extends Actor with ActorLogging {
 
   implicit val system = context.system
+
+  val bindAddress = context.system.settings.config.getString("ircserver.socket.bind_adress")
+
+  val port = context.system.settings.config.getInt("ircserver.socket.port")
+
+  val serverAddress = new InetSocketAddress(bindAddress, port)
 
   val settings = MaterializerSettings()
 

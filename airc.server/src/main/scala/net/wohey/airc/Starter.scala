@@ -9,7 +9,7 @@ object Starter {
 
   def main(args: Array[String]): Unit = {
     val ircServerSystem = ActorSystem.create("ircserver-system")
-    ircServerSystem.actorOf(Props(new IrcServer(new InetSocketAddress(9999), shutdownSystemOnError = true)), "ircserver")
+    ircServerSystem.actorOf(Props(new IrcServer(shutdownSystemOnError = true)), "ircserver")
   }
 
 }
