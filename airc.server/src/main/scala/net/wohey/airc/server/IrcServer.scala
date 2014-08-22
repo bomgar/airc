@@ -13,9 +13,8 @@ import akka.stream.{FlowMaterializer, MaterializerSettings}
 import akka.util.{ByteString, Timeout}
 import net.wohey.airc.parser.IrcMessageParser
 
-import scala.concurrent.{Promise, Future}
 import scala.concurrent.duration._
-import scala.util.{Try, Failure, Success}
+import scala.util.{Failure, Success}
 
 class IrcServer(system: ActorSystem, val serverAddress: InetSocketAddress) extends SLF4JLogging {
 
@@ -44,14 +43,9 @@ class IrcServer(system: ActorSystem, val serverAddress: InetSocketAddress) exten
         }.consume(materializer)
     }
 
-    val p = Promise[Boolean]()
-    serverFuture.onComplete {
-        case Failure(e) =>
-          log.error(s"Server could not bind to $serverAddress: ${e.getMessage}")
-          p.failure(e)
-        case _ => p.success(true)
-    }
-    p.future
+    serverFuture.onFailure{ case e : Exception => log.error(s"Server could not bind to $serverAddress: ${e.getMessage}")}
+
+    serverFuture.map(_ => true)
   }
 
 
