@@ -36,6 +36,12 @@ class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLoggi
   }
 
   when(Subscribed) {
+    case Event(IncomingFlowClosed, _) =>
+      log.info(s"$remoteAddress closed connection")
+      stop()
+    case Event(OutgoingFlowClosed, _) =>
+      log.info(s"$remoteAddress outgoing flow closed")
+      stop()
     case Event(message : IncomingIrcMessage, _) =>
       log.debug("{}: {}", remoteAddress, message)
       stay()
