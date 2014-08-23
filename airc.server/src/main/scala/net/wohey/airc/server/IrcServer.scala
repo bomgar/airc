@@ -87,7 +87,7 @@ class IrcServer(shutdownSystemOnError : Boolean = false) extends Actor with Acto
       }
     }
     Flow(publisher)
-      .map(_.toString)
+      .map(_.toString + "\r\n")
       .map(ByteString.apply)
       .produceTo(materializer, connection.outputStream)
   }
