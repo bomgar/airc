@@ -9,8 +9,10 @@ import akka.stream.io.StreamTcp.IncomingTcpConnection
 import akka.stream.scaladsl.Flow
 import akka.stream.{FlowMaterializer, MaterializerSettings}
 import akka.util.{ByteString, Timeout}
+import net.wohey.airc.IrcMessage
 import net.wohey.airc.parser.IrcMessageParser
 import net.wohey.airc.server.Connection.IncomingFlowClosed
+import org.reactivestreams.{Subscriber, Publisher}
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
@@ -58,6 +60,7 @@ class IrcServer(shutdownSystemOnError : Boolean = false) extends Actor with Acto
   private def handleNewConnection(connection: IncomingTcpConnection) {
     val connectionActor = context.actorOf(Props(new Connection(connection.remoteAddress)))
     createIncomingFlow(connection, connectionActor)
+    createOutgoingFlow(connection, connectionActor)
   }
 
   private def createIncomingFlow(connection: IncomingTcpConnection, connectionActor : ActorRef) {
@@ -73,5 +76,19 @@ class IrcServer(shutdownSystemOnError : Boolean = false) extends Actor with Acto
       }
       .foreach(connectionActor ! _)
       .onComplete(materializer){case _ => connectionActor ! Connection.IncomingFlowClosed}
+  }
+
+  private def createOutgoingFlow(connection: IncomingTcpConnection, connectionActor : ActorRef) {
+    val delimiterFraming = new DelimiterFraming(maxSize = 1000, delimiter = delimiter)
+    val publisher = new Publisher[IrcMessage] {
+
+      override def subscribe(s: Subscriber[IrcMessage]): Unit = {
+        connectionActor ! Connection.Subscribe(s)
+      }
+    }
+    Flow(publisher)
+      .map(_.toString)
+      .map(ByteString.apply)
+      .produceTo(materializer, connection.outputStream)
   }
 }
