@@ -9,6 +9,8 @@ import net.wohey.airc.user.User
 
 class IncomingMessageHandler(connection : ActorRef, user : ActorRef, remoteAddress: InetSocketAddress, serverName : String) extends SLF4JLogging {
 
+  implicit val sender = connection
+
   def handleIncomingIrcMessage(message : IncomingIrcMessage) = {
     log.debug(s"$remoteAddress: $message")
     message.command match {

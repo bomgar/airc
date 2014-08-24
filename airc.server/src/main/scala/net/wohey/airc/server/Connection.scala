@@ -50,6 +50,10 @@ class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLoggi
     case Event(message : IncomingIrcMessage, _) =>
       messageHandler.handleIncomingIrcMessage(message)
       stay()
+    case Event(User.InvalidPassword, SubscriptionData(requested, subscriber)) =>
+      log.info(s"$remoteAddress close connection invalid password")
+      subscriber.onComplete()
+      stop()
     case Event(SubscriptionRequest(n), SubscriptionData(requested, subscriber)) =>
       log.debug(s"Subscription request $n")
       stay()
