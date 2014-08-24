@@ -4,7 +4,7 @@ import java.net.InetSocketAddress
 
 import akka.actor.{Props, FSM, ActorLogging, Actor}
 import net.wohey.airc.user.User
-import net.wohey.airc.{NoticeMessage, IrcMessage, IncomingIrcMessage}
+import net.wohey.airc.{ServerIrcMessage, NoticeMessage, IrcMessage, IncomingIrcMessage}
 import net.wohey.airc.server.Connection._
 import org.reactivestreams.{Subscriber, Subscription}
 import scala.collection.immutable.Queue
@@ -34,7 +34,7 @@ class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLoggi
     case Event(Subscribe(subscriber), Uninitialized(messages)) =>
       subscriber.onSubscribe(new ConnectionSubscription)
       messages.foreach(self ! _)
-      goto(Subscribed) using SubscriptionData(requested = 0, subscriber)
+      goto(Subscribed) using SubscriptionData(requested = 0, subscriber, Queue.empty)
     case Event(StateTimeout, _) =>
       log.warning("{} connection wasn't subscribed", remoteAddress)
       stop()
@@ -50,13 +50,23 @@ class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLoggi
     case Event(message : IncomingIrcMessage, _) =>
       messageHandler.handleIncomingIrcMessage(message)
       stay()
-    case Event(User.InvalidPassword, SubscriptionData(requested, subscriber)) =>
+    case Event(User.InvalidPassword, SubscriptionData(_, subscriber, _)) =>
       log.info(s"$remoteAddress close connection invalid password")
       subscriber.onComplete()
       stop()
-    case Event(SubscriptionRequest(n), SubscriptionData(requested, subscriber)) =>
-      log.debug(s"Subscription request $n")
-      stay()
+    case Event(SubscriptionRequest(n), SubscriptionData(requested, subscriber, pendingMessages)) =>
+      val messagesToSendImmediately = pendingMessages take n
+      messagesToSendImmediately.foreach(subscriber.onNext)
+      stay() using SubscriptionData(requested = n - messagesToSendImmediately.size, subscriber, pendingMessages drop messagesToSendImmediately.size)
+    case Event(message : ServerIrcMessage, SubscriptionData(requested, subscriber, pendingMessages)) =>
+      if (requested == 0) {
+        stay() using SubscriptionData(requested, subscriber, pendingMessages enqueue message)
+      }
+      else {
+        subscriber.onNext(message)
+        stay() using SubscriptionData(requested = requested - 1, subscriber, pendingMessages)
+      }
+
   }
 
 
@@ -74,7 +84,7 @@ object Connection {
 
   sealed trait ConnectionData
   case class Uninitialized(messages : Queue[IncomingIrcMessage]) extends ConnectionData
-  case class SubscriptionData(requested : Int, subscriber : Subscriber[IrcMessage]) extends ConnectionData
+  case class SubscriptionData(requested : Int, subscriber : Subscriber[IrcMessage], pendingMessages : Queue[ServerIrcMessage]) extends ConnectionData
 
 }
 
