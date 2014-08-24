@@ -2,7 +2,8 @@ package net.wohey.airc.server
 
 import java.net.InetSocketAddress
 
-import akka.actor.{FSM, ActorLogging, Actor}
+import akka.actor.{Props, FSM, ActorLogging, Actor}
+import net.wohey.airc.user.User
 import net.wohey.airc.{NoticeMessage, IrcMessage, IncomingIrcMessage}
 import net.wohey.airc.server.Connection._
 import org.reactivestreams.{Subscriber, Subscription}
@@ -16,6 +17,10 @@ class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLoggi
 
     override def request(n: Int) = self ! SubscriptionRequest(n)
   }
+
+  val user = context.actorOf(Props[User])
+
+  val messageHandler = new IncomingMessageHandler(connection = self, user = user, remoteAddress = remoteAddress, serverName = "todo")
 
   startWith(Open, Uninitialized(messages = Queue.empty))
 
@@ -43,15 +48,12 @@ class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLoggi
       log.info(s"$remoteAddress outgoing flow closed")
       stop()
     case Event(message : IncomingIrcMessage, _) =>
-      log.debug("{}: {}", remoteAddress, message)
+      messageHandler.handleIncomingIrcMessage(message)
       stay()
     case Event(SubscriptionRequest(n), SubscriptionData(requested, subscriber)) =>
       log.debug(s"Subscription request $n")
-      subscriber.onNext(NoticeMessage(serverName = "test", nick = "todo"))
       stay()
   }
-
-
 
 
 }
