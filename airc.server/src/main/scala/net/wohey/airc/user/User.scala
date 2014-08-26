@@ -12,14 +12,13 @@ class User extends Actor with ActorLogging with FSM[UserState, UserData] {
   startWith(AuhenticationPending, EmptyState)
 
   when(AuhenticationPending) {
-    case Event(Authenticate(password), _) =>
-      if (password == serverPassword) {
+    case Event(Authenticate(password), _) => password match {
+      case `serverPassword` =>
         goto(RegistrationPending)
-      }
-      else {
+      case _ =>
         sender ! InvalidPassword
         stay()
-      }
+    }
   }
 
   when(RegistrationPending) {
