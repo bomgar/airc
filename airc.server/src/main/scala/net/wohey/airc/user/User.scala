@@ -1,9 +1,10 @@
 package net.wohey.airc.user
 
-import akka.actor.{FSM, Actor}
+import akka.actor.{ActorLogging, FSM, Actor}
 import net.wohey.airc.user.User._
+import net.wohey.airc.AlreadyAuthenticatedMessage
 
-class User extends Actor with FSM[UserState, UserData] {
+class User extends Actor with ActorLogging with FSM[UserState, UserData] {
 
 
   private val serverPassword = context.system.settings.config.getString("ircserver.password")
@@ -23,7 +24,10 @@ class User extends Actor with FSM[UserState, UserData] {
 
   when(RegistrationPending) {
     case Event(Authenticate(_), _) =>
-      sender ! AlreadyAuthenticated
+      sender ! new AlreadyAuthenticatedMessage("todo")
+      stay()
+    case Event(SetUsername(username), _) =>
+      log.info(s"STUB: User wishes to change nickname to $username")
       stay()
   }
 
@@ -34,10 +38,9 @@ object User {
 
   case class Authenticate(password: String)
 
+  case class SetUsername(username: String)
+
   case object InvalidPassword
-
-  case object AlreadyAuthenticated
-
 
 
   sealed trait UserState
@@ -46,6 +49,7 @@ object User {
 
   case object RegistrationPending extends UserState
 
+  case object Auhenticated extends UserState
 
 
 

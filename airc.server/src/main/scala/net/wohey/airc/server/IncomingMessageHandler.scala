@@ -4,23 +4,28 @@ import java.net.InetSocketAddress
 
 import akka.actor.ActorRef
 import akka.event.slf4j.SLF4JLogging
-import net.wohey.airc.{NeedMoreParamsMessage, IncomingIrcMessage}
+import net.wohey.airc.IrcCommand._
 import net.wohey.airc.user.User
+import net.wohey.airc.{IrcCommand, UserIrcMessage, NeedMoreParamsMessage, UnknownCommandMessage}
 
 class IncomingMessageHandler(connection : ActorRef, user : ActorRef, remoteAddress: InetSocketAddress, serverName : String) extends SLF4JLogging {
 
   implicit val sender = connection
 
-  def handleIncomingIrcMessage(message : IncomingIrcMessage) = {
+  def handleIncomingIrcMessage(message : UserIrcMessage) = {
     log.debug(s"$remoteAddress: $message")
-    message.command match {
-      case "PASS" =>
+    IrcCommand(message.command).fold(connection ! UnknownCommandMessage(serverName, message.command))({
+      case PASS =>
         message.arguments match {
           case List(password) => user ! User.Authenticate(password = password)
-          case _              => connection ! NeedMoreParamsMessage(serverName, message.command)
+          case _ => connection ! NeedMoreParamsMessage(serverName, PASS)
         }
-
-    }
+      case NICK =>
+        message.arguments match {
+          case List(username) => user ! User.SetUsername(username = username)
+          case _ => connection ! NeedMoreParamsMessage(serverName, NICK)
+        }
+    })
   }
 
 }

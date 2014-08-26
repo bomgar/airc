@@ -4,7 +4,7 @@ import java.net.InetSocketAddress
 
 import akka.actor.{Props, FSM, ActorLogging, Actor}
 import net.wohey.airc.user.User
-import net.wohey.airc.{ServerIrcMessage, NoticeMessage, IrcMessage, IncomingIrcMessage}
+import net.wohey.airc.{ServerIrcMessage, IrcMessage, UserIrcMessage}
 import net.wohey.airc.server.Connection._
 import org.reactivestreams.{Subscriber, Subscription}
 import scala.collection.immutable.Queue
@@ -18,7 +18,7 @@ class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLoggi
     override def request(n: Int) = self ! SubscriptionRequest(n)
   }
 
-  val user = context.actorOf(Props[User])
+  val user = context.actorOf(Props[User],"user")
 
   val messageHandler = new IncomingMessageHandler(connection = self, user = user, remoteAddress = remoteAddress, serverName = "todo")
 
@@ -28,7 +28,7 @@ class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLoggi
     case Event(IncomingFlowClosed, _) =>
       log.info(s"$remoteAddress closed connection")
       stop()
-    case Event(message : IncomingIrcMessage, Uninitialized(messages)) =>
+    case Event(message : UserIrcMessage, Uninitialized(messages)) =>
       log.debug("{}: buffered message before subscription", remoteAddress)
       stay() using Uninitialized(messages = messages enqueue message)
     case Event(Subscribe(subscriber), Uninitialized(messages)) =>
@@ -47,7 +47,7 @@ class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLoggi
     case Event(OutgoingFlowClosed, _) =>
       log.info(s"$remoteAddress outgoing flow closed")
       stop()
-    case Event(message : IncomingIrcMessage, _) =>
+    case Event(message : UserIrcMessage, _) =>
       messageHandler.handleIncomingIrcMessage(message)
       stay()
     case Event(User.InvalidPassword, SubscriptionData(_, subscriber, _)) =>
@@ -83,7 +83,7 @@ object Connection {
   case object Subscribed extends ConnectionState
 
   sealed trait ConnectionData
-  case class Uninitialized(messages : Queue[IncomingIrcMessage]) extends ConnectionData
+  case class Uninitialized(messages : Queue[UserIrcMessage]) extends ConnectionData
   case class SubscriptionData(requested : Int, subscriber : Subscriber[IrcMessage], pendingMessages : Queue[ServerIrcMessage]) extends ConnectionData
 
 }
