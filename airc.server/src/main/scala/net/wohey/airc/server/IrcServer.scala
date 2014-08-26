@@ -70,16 +70,12 @@ class IrcServer(shutdownSystemOnError : Boolean = false) extends Actor with Acto
       .map(_.utf8String)
       .map(IrcMessageParser.parse)
       .filter(_.isSuccess)
-      .map {
-        case Success(m) => m
-        case Failure(_) => throw new IllegalStateException("All failures should have been filtered already.")
-      }
+      .map(_.get)
       .foreach(connectionActor ! _)
       .onComplete(materializer){case _ => connectionActor ! Connection.IncomingFlowClosed}
   }
 
   private def createOutgoingFlow(connection: IncomingTcpConnection, connectionActor : ActorRef) {
-    val delimiterFraming = new DelimiterFraming(maxSize = 1000, delimiter = delimiter)
     val publisher = new Publisher[IrcMessage] {
 
       override def subscribe(s: Subscriber[IrcMessage]): Unit = {
