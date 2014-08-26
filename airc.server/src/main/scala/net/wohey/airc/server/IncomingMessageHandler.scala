@@ -15,16 +15,18 @@ class IncomingMessageHandler(connection : ActorRef, user : ActorRef, remoteAddre
   def handleIncomingIrcMessage(message : UserIrcMessage) = {
     log.debug(s"$remoteAddress: $message")
     IrcCommand(message.command).fold(connection ! UnknownCommandMessage(serverName, message.command))({
-      case PASS =>
-        message.arguments match {
+      case PASS => message.arguments match {
           case List(password) => user ! User.Authenticate(password = password)
           case _ => connection ! NeedMoreParamsMessage(serverName, PASS)
         }
-      case NICK =>
-        message.arguments match {
+      case NICK => message.arguments match {
           case List(username) => user ! User.SetUsername(username = username)
           case _ => connection ! NeedMoreParamsMessage(serverName, NICK)
         }
+      case QUIT => message.arguments match {
+        case Nil => user ! User.Quit(None)
+        case quitMessageAsList => user ! User.Quit(Some(quitMessageAsList.mkString(" ")))
+      }
     })
   }
 

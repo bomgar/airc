@@ -54,6 +54,10 @@ class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLoggi
       log.info(s"$remoteAddress close connection invalid password")
       subscriber.onComplete()
       stop()
+    case Event(User.Quit, SubscriptionData(_, subscriber, _)) =>
+      log.info(s"$remoteAddress closing connection.")
+      subscriber.onComplete()
+      stop()
     case Event(SubscriptionRequest(n), SubscriptionData(requested, subscriber, pendingMessages)) =>
       val messagesToSendImmediately = pendingMessages take n
       messagesToSendImmediately.foreach(subscriber.onNext)
