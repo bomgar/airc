@@ -1,6 +1,6 @@
 package net.wohey.airc.parser
 
-import net.wohey.airc.{MessagePrefix, IncomingIrcMessage}
+import net.wohey.airc.{MessagePrefix, UserIrcMessage}
 
 import scala.util.Try
 import scala.util.parsing.combinator._
@@ -28,10 +28,10 @@ object IrcMessageParser extends RegexParsers {
   private val message = prefix.? ~ command ~ arg.* ~ trailing.? ^^ {
     case p ~ c ~ a ~ t =>
       val arguments = a ::: t.map(List(_)).getOrElse(List.empty)
-      IncomingIrcMessage(prefix = p, command = c, arguments = arguments)
+      UserIrcMessage(prefix = p, command = c, arguments = arguments)
   }
 
-  def parse(text: String): Try[IncomingIrcMessage] = parseAll(message, text) match {
+  def parse(text: String): Try[UserIrcMessage] = parseAll(message, text) match {
     case Success(ircMessage, _) => scala.util.Success(ircMessage)
     case NoSuccess(msg, _)      => scala.util.Failure(new IllegalArgumentException(msg))
   }
