@@ -19,11 +19,6 @@ with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll {
     TestKit.shutdownActorSystem(system)
   }
 
-  val isQuitMessage: PartialFunction[Any, Boolean] = {
-    case Quit => true
-    case _ => false
-  }
-
   "An User actor" should {
 
     "reject invalid passwords" in {
@@ -43,12 +38,12 @@ with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll {
 
       val userInAuhenticationPending = TestFSMRef(new User())
       userInAuhenticationPending ! User.Quit(Some("'cos i want to"))
-      fishForMessage(Duration(20L, TimeUnit.MILLISECONDS), "'Quit' message for non authenticated user not recieved")(isQuitMessage)
+      expectMsg(Quit)
 
       val userAuthenticated = TestFSMRef(new User())
       userAuthenticated ! User.Authenticate(password = "test")
       userAuthenticated ! User.Quit(Some("'cos i want to"))
-      fishForMessage(Duration(20L, TimeUnit.MILLISECONDS), "'Quit' message for authenticated user not recieved")(isQuitMessage)
+      expectMsg(Quit)
     }
 
   }
