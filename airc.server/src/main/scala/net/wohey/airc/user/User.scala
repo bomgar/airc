@@ -33,7 +33,7 @@ class User extends Actor with ActorLogging with FSM[UserState, UserData] {
   whenUnhandled {
     case Event(Quit(message), _) =>
       val quitMessage = message match {
-        case Some(msg) => s" with message '$msg'"
+        case Some(msg) => s"with message '$msg'"
         case None => "with no specific message"
       }
       log.info(s"User wishes to close connection $quitMessage.")
@@ -53,6 +53,8 @@ object User {
   case class Quit(message: Option[String])
 
   case object InvalidPassword
+
+  case object Quit
 
 
   sealed trait UserState

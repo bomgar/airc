@@ -4,9 +4,12 @@ import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestFSMRef, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+import net.wohey.airc.user.User.{Quit, InvalidPassword}
+import scala.concurrent.duration.Duration
+import java.util.concurrent.TimeUnit
 
 class UserTest(_system: ActorSystem) extends TestKit(_system)
-  with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll {
+with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll {
 
   def this() = {
     this(ActorSystem(classOf[UserTest].getSimpleName, ConfigFactory.parseString("ircserver.password=test")))
@@ -14,6 +17,11 @@ class UserTest(_system: ActorSystem) extends TestKit(_system)
 
   override def afterAll() {
     TestKit.shutdownActorSystem(system)
+  }
+
+  val isQuitMessage: PartialFunction[Any, Boolean] = {
+    case Quit => true
+    case _ => false
   }
 
   "An User actor" should {
@@ -29,6 +37,18 @@ class UserTest(_system: ActorSystem) extends TestKit(_system)
       val user = TestFSMRef(new User())
       user ! User.Authenticate(password = "test")
       user.stateName == User.RegistrationPending
+    }
+
+    "should be able to quit in any state" in {
+
+      val userInAuhenticationPending = TestFSMRef(new User())
+      userInAuhenticationPending ! User.Quit(Some("'cos i want to"))
+      fishForMessage(Duration(20L, TimeUnit.MILLISECONDS), "'Quit' message for non authenticated user not recieved")(isQuitMessage)
+
+      val userAuthenticated = TestFSMRef(new User())
+      userAuthenticated ! User.Authenticate(password = "test")
+      userAuthenticated ! User.Quit(Some("'cos i want to"))
+      fishForMessage(Duration(20L, TimeUnit.MILLISECONDS), "'Quit' message for authenticated user not recieved")(isQuitMessage)
     }
 
   }
