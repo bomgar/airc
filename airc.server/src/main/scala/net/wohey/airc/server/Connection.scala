@@ -2,7 +2,7 @@ package net.wohey.airc.server
 
 import java.net.InetSocketAddress
 
-import akka.actor.{Props, FSM, ActorLogging, Actor}
+import akka.actor._
 import net.wohey.airc.user.User
 import net.wohey.airc.{ServerIrcMessage, IrcMessage, UserIrcMessage}
 import net.wohey.airc.server.Connection._
@@ -10,7 +10,7 @@ import org.reactivestreams.{Subscriber, Subscription}
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
 
-class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLogging with FSM[Connection.ConnectionState, Connection.ConnectionData] {
+trait ConnectionActor extends Actor with ActorLogging with FSM[Connection.ConnectionState, Connection.ConnectionData] {
 
   private class ConnectionSubscription extends Subscription {
     override def cancel() = self ! OutgoingFlowClosed
@@ -18,9 +18,11 @@ class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLoggi
     override def request(n: Int) = self ! SubscriptionRequest(n)
   }
 
-  val user = context.actorOf(Props[User],"user")
+  protected def remoteAddress: InetSocketAddress
 
-  val messageHandler = new IncomingMessageHandler(connection = self, user = user, remoteAddress = remoteAddress, serverName = "todo")
+  protected def user : ActorRef
+
+  protected def messageHandler : IncomingMessageHandler
 
   startWith(Open, Uninitialized(messages = Queue.empty))
 
@@ -72,9 +74,17 @@ class Connection(remoteAddress: InetSocketAddress) extends Actor with ActorLoggi
       }
 
   }
-
-
 }
+
+class Connection(_remoteAddress: InetSocketAddress) extends ConnectionActor {
+
+  override protected val remoteAddress = _remoteAddress
+
+  override protected val user = context.actorOf(Props[User],"user")
+
+  override protected val messageHandler = new IncomingMessageHandler(connection = self, user = user, remoteAddress = _remoteAddress, serverName = "todo")
+}
+
 
 object Connection {
   case class IncomingFlowClosed()
