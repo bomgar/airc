@@ -13,16 +13,10 @@ import org.scalatest.mock.MockitoSugar
 import org.scalatest._
 
 class ConnectionTest(_system: ActorSystem) extends TestKit(_system)
-with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll with MockitoSugar with Inside with BeforeAndAfter {
-
-  val messageHandlerMock = mock[IncomingMessageHandler]
+with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll with MockitoSugar with Inside {
 
   def this() = {
     this(ActorSystem(classOf[ConnectionTest].getSimpleName, ConfigFactory.parseString("ircserver.password=test")))
-  }
-
-  before {
-    reset(messageHandlerMock)
   }
 
   override def afterAll() {
@@ -37,7 +31,7 @@ with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll with 
 
     override val user = userProbe.ref
 
-    override val messageHandler = messageHandlerMock
+    override val messageHandler = mock[IncomingMessageHandler]
 
   }
 
@@ -74,8 +68,8 @@ with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll with 
         connection ! Connection.Subscribe(subscriber)
         connection.stateName should be(Connection.Subscribed)
 
-        verify(messageHandlerMock, timeout(1000).times(2)).handleIncomingIrcMessage(any(classOf[UserIrcMessage]))
-        verifyNoMoreInteractions(messageHandlerMock)
+        verify(connection.underlyingActor.messageHandler, timeout(1000).times(2)).handleIncomingIrcMessage(any(classOf[UserIrcMessage]))
+        verifyNoMoreInteractions(connection.underlyingActor.messageHandler)
       }
     }
 
